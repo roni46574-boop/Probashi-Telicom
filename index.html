@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>প্রবাসী টেলিকম | Probashi Telecom</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0a0e17;
+  --card: #141b2d;
+  --accent: #00d4ff;
+  --accent2: #7c3aed;
+  --success: #10b981;
+  --danger: #ef4444;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+}
+* { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+body { background: var(--bg); color: var(--text); min-height:100vh; overflow-x:hidden; }
+.container { max-width: 480px; margin: 0 auto; min-height:100vh; position:relative; }
+
+/* Login Page */
+.login-page { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; background: radial-gradient(circle at top, #1e293b 0%, #0a0e17 70%); }
+.logo-area { text-align:center; margin-bottom:30px; animation: float 3s ease-in-out infinite; }
+.logo-area h1 { font-size:28px; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-weight:800; }
+.logo-area p { color:var(--muted); font-size:13px; margin-top:4px; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
+.card { background: var(--card); border-radius:20px; padding:24px; width:100%; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.05); }
+input, select { width:100%; padding:14px 16px; margin:8px 0; border-radius:12px; border:1px solid #334155; background:#0f172a; color:white; font-size:15px; outline:none; }
+input:focus, select:focus { border-color: var(--accent); }
+.btn { width:100%; padding:14px; border-radius:12px; border:none; font-weight:700; font-size:16px; cursor:pointer; margin-top:10px; transition:all 0.2s; }
+.btn-primary { background: linear-gradient(90deg, var(--accent), var(--accent2)); color:white; }
+.btn-primary:active { transform:scale(0.98); }
+.btn-admin { background:#1e293b; color:var(--accent); border:1px solid var(--accent); margin-top:12px; }
+.google-btn { background:#fff; color:#333; display:flex; align-items:center; justify-content:center; gap:10px; }
+.divider { text-align:center; margin:16px 0; color:var(--muted); font-size:13px; }
+
+/* Dashboard */
+.dashboard { display:none; padding:16px; }
+.header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.header h2 { font-size:20px; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+.service-card { background:var(--card); border-radius:16px; padding:16px; text-align:center; cursor:pointer; border:1px solid rgba(255,255,255,0.05); transition:all 0.2s; }
+.service-card:active { transform:scale(0.96); border-color:var(--accent); }
+.service-card img { width:48px; height:48px; object-fit:contain; margin-bottom:8px; border-radius:8px; }
+.service-card p { font-size:13px; font-weight:600; }
+
+/* Forms */
+.form-section { display:none; padding:16px; }
+.back-btn { background:none; border:none; color:var(--accent); font-size:18px; cursor:pointer; margin-bottom:16px; }
+.operator-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+.op-card { background:#1e293b; border-radius:12px; padding:10px; text-align:center; cursor:pointer; border:2px solid transparent; }
+.op-card.selected { border-color:var(--accent); }
+.op-card img { width:40px; height:40px; object-fit:contain; }
+
+/* Admin */
+.admin-panel { display:none; padding:16px; }
+.admin-card { background:var(--card); border-radius:16px; padding:16px; margin-bottom:12px; }
+.status-badge { padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+.status-pending { background:#f59e0b33; color:#f59e0b; }
+.status-approved { background:#10b98133; color:#10b981; }
+.status-rejected { background:#ef444433; color:#ef4444; }
+
+/* Toast */
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1e293b; color:white; padding:12px 20px; border-radius:30px; font-size:14px; display:none; z-index:999; border:1px solid var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- LOGIN PAGE -->
+  <div id="loginPage" class="login-page">
+    <div class="logo-area">
+      <h1>প্রবাসী টেলিকম</h1>
+      <p>Probashi Telecom • Premium Service</p>
+    </div>
+    <div class="card">
+      <div id="loginForm">
+        <input type="email" id="email" placeholder="ইমেইল">
+        <input type="password" id="password" placeholder="পাসওয়ার্ড">
+        <button class="btn btn-primary" onclick="loginWithEmail()">লগইন</button>
+        <div class="divider">অথবা</div>
+        <button class="btn google-btn" onclick="loginWithGoogle()">
+          <i class="fab fa-google"></i> Google দিয়ে লগইন
+        </button>
+        <button class="btn btn-admin" onclick="showAdminLogin()">অ্যাডমিন প্যানেল</button>
+        <p style="text-align:center; margin-top:16px; font-size:13px; color:var(--muted);">
+          অ্যাকাউন্ট নেই? <span style="color:var(--accent); cursor:pointer;" onclick="showRegister()">রেজিস্ট্রেশন করুন</span>
+        </p>
+      </div>
+
+      <div id="registerForm" style="display:none;">
+        <input type="text" id="regName" placeholder="নাম">
+        <input type="email" id="regEmail" placeholder="ইমেইল">
+        <input type="tel" id="regPhone" placeholder="মোবাইল নম্বর">
+        <input type="password" id="regPass" placeholder="পাসওয়ার্ড">
+        <button class="btn btn-primary" onclick="registerUser()">রেজিস্ট্রেশন</button>
+        <p style="text-align:center; margin-top:12px; font-size:13px; color:var(--muted);">
+          আগে থেকে অ্যাকাউন্ট আছে? <span style="color:var(--accent); cursor:pointer;" onclick="showLogin()">লগইন করুন</span>
+        </p>
+      </div>
+
+      <div id="adminLoginForm" style="display:none;">
+        <h3 style="margin-bottom:12px; text-align:center;">অ্যাডমিন লগইন</h3>
+        <input type="password" id="adminPass" placeholder="অ্যাডমিন পাসওয়ার্ড">
+        <button class="btn btn-primary" onclick="adminLogin()">লগইন</button>
+        <button class="btn" style="background:#334155; margin-top:8px;" onclick="showLogin()">ফিরে যান</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="dashboard">
+    <div class="header">
+      <div>
+        <h2>হ্যালো, <span id="userName">ইউজার</span></h2>
+        <p style="font-size:12px; color:var(--muted);">প্রবাসী টেলিকম</p>
+      </div>
+      <button class="btn" style="width:auto; padding:8px 14px; background:#1e293b;" onclick="logout()">লগআউট</button>
+    </div>
+
+    <div class="grid">
+      <div class="service-card" onclick="openSection('recharge')">
+        <i class="fas fa-mobile-alt" style="font-size:32px; color:var(--accent); margin-bottom:8px;"></i>
+        <p>মোবাইল রিচার্জ</p>
+      </div>
+      <div class="service-card" onclick="openSection('fund')">
+        <i class="fas fa-wallet" style="font-size:32px; color:#10b981; margin-bottom:8px;"></i>
+        <p>ফান্ড ট্রান্সফার</p>
+      </div>
+      <div class="service-card" onclick="openSection('bank')">
+        <i class="fas fa-university" style="font-size:32px; color:#f59e0b; margin-bottom:8px;"></i>
+        <p>ব্যাংক ট্রান্সফার</p>
+      </div>
+      <div class="service-card" onclick="openSection('bill')">
+        <i class="fas fa-file-invoice-dollar" style="font-size:32px; color:#ec4899; margin-bottom:8px;"></i>
+        <p>বিল পেমেন্ট</p>
+      </div>
+    </div>
+
+    <div style="background:var(--card); border-radius:16px; padding:16px;">
+      <h4 style="margin-bottom:12px;">সাম্প্রতিক ট্রানজেকশন</h4>
+      <div id="recentTx">কোনো ট্রানজেকশন নেই</div>
+    </div>
+  </div>
+
+  <!-- RECHARGE SECTION -->
+  <div id="rechargeSection" class="form-section">
+    <button class="back-btn" onclick="goBack()"><i class="fas fa-arrow-left"></i> ফিরে যান</button>
+    <h3 style="margin-bottom:16px;">মোবাইল রিচার্জ</h3>
+    <div class="operator-grid" id="operatorGrid"></div>
+    <input type="tel" id="rechargeNumber" placeholder="মোবাইল নম্বর">
+    <input type="number" id="rechargeAmount" placeholder="টাকার পরিমাণ">
+    <button class="btn btn-primary" onclick="submitOrder('recharge')">রিকোয়েস্ট পাঠান</button>
+  </div>
+
+  <!-- FUND TRANSFER -->
+  <div id="fundSection" class="form-section">
+    <button class="back-btn" onclick="goBack()"><i class="fas fa-arrow-left"></i> ফিরে যান</button>
+    <h3 style="margin-bottom:16px;">ফান্ড ট্রান্সফার</h3>
+    <div class="operator-grid" id="walletGrid"></div>
+    <input type="tel" id="fundNumber" placeholder="নম্বর">
+    <input type="number" id="fundAmount" placeholder="টাকার পরিমাণ">
+    <button class="btn btn-primary" onclick="submitOrder('fund')">রিকোয়েস্ট পাঠান</button>
+  </div>
+
+  <!-- BANK TRANSFER -->
+  <div id="bankSection" class="form-section">
+    <button class="back-btn" onclick="goBack()"><i class="fas fa-arrow-left"></i> ফিরে যান</button>
+    <h3 style="margin-bottom:16px;">ব্যাংক ট্রান্সফার</h3>
+    <select id="bankSelect"></select>
+    <input type="text" id="bankAccount" placeholder="অ্যাকাউন্ট নম্বর">
+    <input type="text" id="bankHolder" placeholder="অ্যাকাউন্ট হোল্ডারের নাম">
+    <input type="number" id="bankAmount" placeholder="টাকার পরিমাণ">
+    <button class="btn btn-primary" onclick="submitOrder('bank')">রিকোয়েস্ট পাঠান</button>
+  </div>
+
+  <!-- BILL PAYMENT -->
+  <div id="billSection" class="form-section">
+    <button class="back-btn" onclick="goBack()"><i class="fas fa-arrow-left"></i> ফিরে যান</button>
+    <h3 style="margin-bottom:16px;">বিল পেমেন্ট</h3>
+    <select id="billType">
+      <option value="desco_prepaid">DESCO প্রিপেইড</option>
+      <option value="desco_postpaid">DESCO পোস্টপেইড</option>
+      <option value="gas">গ্যাস বিল</option>
+      <option value="water">পানি বিল</option>
+      <option value="wifi">ওয়াইফাই বিল</option>
+    </select>
+    <input type="text" id="billNumber" placeholder="অ্যাকাউন্ট / মিটার নম্বর">
+    <input type="number" id="billAmount" placeholder="টাকার পরিমাণ">
+    <button class="btn btn-primary" onclick="submitOrder('bill')">রিকোয়েস্ট পাঠান</button>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div id="adminPanel" class="admin-panel">
+    <div class="header">
+      <h2>অ্যাডমিন প্যানেল</h2>
+      <button class="btn" style="width:auto; padding:8px 14px; background:#1e293b;" onclick="logout()">লগআউট</button>
+    </div>
+    <div class="admin-card">
+      <h4>সোডা রেট (১ রিয়াল = কত টাকা)</h4>
+      <input type="number" id="sodaRate" placeholder="রেট" value="30">
+      <button class="btn btn-primary" onclick="updateRate()">আপডেট করুন</button>
+    </div>
+    <div class="admin-card">
+      <h4>অ্যাকাউন্ট নম্বর</h4>
+      <input type="text" id="bkashNum" placeholder="বিকাশ" value="0194660840">
+      <input type="text" id="rocketNum" placeholder="রকেট" value="0736053250">
+      <input type="text" id="islamiNum" placeholder="ইসলামী ব্যাংক" value="20502090205014402">
+      <button class="btn btn-primary" onclick="updateAccounts()">সেভ করুন</button>
+    </div>
+    <div class="admin-card">
+      <h4>পেন্ডিং অর্ডার</h4>
+      <div id="adminOrders">লোড হচ্ছে...</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyAJa2zdDudN8HoKAbwwcpAhagtvM3rfwhg",
+  authDomain: "probashi-telecom-33696.firebaseapp.com",
+  databaseURL: "https://probashi-telecom-33696-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "probashi-telecom-33696",
+  storageBucket: "probashi-telecom-33696.firebasestorage.app",
+  messagingSenderId: "795590822618",
+  appId: "1:795590822618:android:5d3cd544e97ce09c9633e3"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+
+// Telegram
+const BOT_TOKEN = "8984750189:AAGD1_kI55ZpUv_6AGQQ0Wmr4QY5zrA8QkA";
+const CHAT_ID = "8660155845";
+
+// Operators & Wallets (using local logo files)
+const operators = [
+  {id:"gp", name:"গ্রামীণফোন", logo:"logos/1000063124.webp"},
+  {id:"robi", name:"রবি", logo:"logos/1000063127.png"},
+  {id:"banglalink", name:"বাংলালিংক", logo:"logos/1000063125.webp"},
+  {id:"teletalk", name:"টেলিটক", logo:"logos/1000063128.webp"}
+];
+const wallets = [
+  {id:"bkash", name:"বিকাশ", logo:"logos/1000063129.png"},
+  {id:"rocket", name:"রকেট", logo:"logos/1000063130.webp"},
+  {id:"nagad", name:"নগদ", logo:"logos/1000063132.png"},
+  {id:"upay", name:"উপায়", logo:"logos/1000063131.webp"}
+];
+const banks = [
+  {id:"rupali", name:"রুপালী ব্যাংক"},
+  {id:"pubali", name:"পূবালী ব্যাংক"},
+  {id:"midland", name:"মিডল্যান্ড ব্যাংক"},
+  {id:"janata", name:"জনতা ব্যাংক"},
+  {id:"islami", name:"ইসলামী ব্যাংক"},
+  {id:"sonali", name:"সোনালী ব্যাংক"}
+];
+
+let currentUser = null;
+let selectedOperator = null;
+let selectedWallet = null;
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  renderOperators();
+  renderWallets();
+  renderBanks();
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      currentUser = user;
+      document.getElementById('userName').textContent = user.displayName || user.email.split('@')[0];
+      showDashboard();
+      loadRecent();
+    } else {
+      showLoginPage();
+    }
+  });
+});
+
+function renderOperators() {
+  const grid = document.getElementById('operatorGrid');
+  grid.innerHTML = operators.map(op => `
+    <div class="op-card" onclick="selectOperator('${op.id}', this)">
+      <img src="${op.logo}" alt="${op.name}">
+      <div style="font-size:11px; margin-top:4px;">${op.name}</div>
+    </div>
+  `).join('');
+}
+function renderWallets() {
+  const grid = document.getElementById('walletGrid');
+  grid.innerHTML = wallets.map(w => `
+    <div class="op-card" onclick="selectWallet('${w.id}', this)">
+      <img src="${w.logo}" alt="${w.name}">
+      <div style="font-size:11px; margin-top:4px;">${w.name}</div>
+    </div>
+  `).join('');
+}
+function renderBanks() {
+  const sel = document.getElementById('bankSelect');
+  sel.innerHTML = banks.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+}
+
+function selectOperator(id, el) {
+  document.querySelectorAll('#operatorGrid .op-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedOperator = id;
+}
+function selectWallet(id, el) {
+  document.querySelectorAll('#walletGrid .op-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedWallet = id;
+}
+
+// Auth
+function loginWithGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err => toast(err.message));
+}
+function loginWithEmail() {
+  const email = document.getElementById('email').value;
+  const pass = document.getElementById('password').value;
+  auth.signInWithEmailAndPassword(email, pass).catch(err => toast(err.message));
+}
+function registerUser() {
+  const name = document.getElementById('regName').value;
+  const email = document.getElementById('regEmail').value;
+  const phone = document.getElementById('regPhone').value;
+  const pass = document.getElementById('regPass').value;
+  auth.createUserWithEmailAndPassword(email, pass).then(cred => {
+    return cred.user.updateProfile({ displayName: name });
+  }).then(() => {
+    db.ref('users/' + auth.currentUser.uid).set({ name, email, phone, created: Date.now() });
+    toast('রেজিস্ট্রেশন সফল!');
+  }).catch(err => toast(err.message));
+}
+function logout() {
+  auth.signOut();
+}
+
+function showLogin() { document.getElementById('loginForm').style.display='block'; document.getElementById('registerForm').style.display='none'; document.getElementById('adminLoginForm').style.display='none'; }
+function showRegister() { document.getElementById('loginForm').style.display='none'; document.getElementById('registerForm').style.display='block'; document.getElementById('adminLoginForm').style.display='none'; }
+function showAdminLogin() { document.getElementById('loginForm').style.display='none'; document.getElementById('registerForm').style.display='none'; document.getElementById('adminLoginForm').style.display='block'; }
+function showLoginPage() { document.getElementById('loginPage').style.display='flex'; document.getElementById('dashboard').style.display='none'; document.getElementById('adminPanel').style.display='none'; }
+function showDashboard() { document.getElementById('loginPage').style.display='none'; document.getElementById('dashboard').style.display='block'; document.getElementById('adminPanel').style.display='none'; }
+
+function adminLogin() {
+  const pass = document.getElementById('adminPass').value;
+  if (pass === 'FATEMA') {
+    document.getElementById('loginPage').style.display='none';
+    document.getElementById('adminPanel').style.display='block';
+    loadAdminOrders();
+    toast('অ্যাডমিন প্যানেল ওপেন');
+  } else {
+    toast('ভুল পাসওয়ার্ড!');
+  }
+}
+
+// Navigation
+function openSection(type) {
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById(type + 'Section').style.display='block';
+}
+function goBack() {
+  document.querySelectorAll('.form-section').forEach(s => s.style.display='none');
+  document.getElementById('dashboard').style.display='block';
+}
+
+// Submit Order
+async function submitOrder(type) {
+  if (!currentUser) return toast('লগইন করুন');
+  let data = {
+    userId: currentUser.uid,
+    userName: currentUser.displayName || currentUser.email,
+    type,
+    status: 'pending',
+    time: Date.now()
+  };
+
+  if (type === 'recharge') {
+    data.operator = selectedOperator;
+    data.number = document.getElementById('rechargeNumber').value;
+    data.amount = document.getElementById('rechargeAmount').value;
+  } else if (type === 'fund') {
+    data.wallet = selectedWallet;
+    data.number = document.getElementById('fundNumber').value;
+    data.amount = document.getElementById('fundAmount').value;
+  } else if (type === 'bank') {
+    data.bank = document.getElementById('bankSelect').value;
+    data.account = document.getElementById('bankAccount').value;
+    data.holder = document.getElementById('bankHolder').value;
+    data.amount = document.getElementById('bankAmount').value;
+  } else if (type === 'bill') {
+    data.billType = document.getElementById('billType').value;
+    data.number = document.getElementById('billNumber').value;
+    data.amount = document.getElementById('billAmount').value;
+  }
+
+  if (!data.amount || data.amount <= 0) return toast('টাকার পরিমাণ দিন');
+
+  const ref = db.ref('orders').push();
+  await ref.set(data);
+  sendTelegram(data, ref.key);
+  toast('রিকোয়েস্ট পাঠানো হয়েছে!');
+  goBack();
+  loadRecent();
+}
+
+// Telegram Notification
+function sendTelegram(order, orderId) {
+  const text = `🆕 নতুন অর্ডার\n\nটাইপ: ${order.type}\nইউজার: ${order.userName}\nপরিমাণ: ${order.amount} টাকা\nস্ট্যাটাস: Pending\nID: ${orderId}`;
+  fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      text,
+      reply_markup: {
+        inline_keyboard: [[
+          { text: "✅ Approve", callback_data: `approve_${orderId}` },
+          { text: "❌ Reject", callback_data: `reject_${orderId}` }
+        ]]
+      }
+    })
+  }).catch(() => {});
+}
+
+// Load recent
+function loadRecent() {
+  if (!currentUser) return;
+  db.ref('orders').orderByChild('userId').equalTo(currentUser.uid).limitToLast(5).once('value', snap => {
+    const div = document.getElementById('recentTx');
+    if (!snap.exists()) { div.innerHTML = 'কোনো ট্রানজেকশন নেই'; return; }
+    let html = '';
+    snap.forEach(child => {
+      const o = child.val();
+      html += `<div style="padding:8px 0; border-bottom:1px solid #334155; font-size:13px;">
+        ${o.type} • ${o.amount} টাকা • <span class="status-badge status-${o.status}">${o.status}</span>
+      </div>`;
+    });
+    div.innerHTML = html;
+  });
+}
+
+function loadAdminOrders() {
+  db.ref('orders').orderByChild('status').equalTo('pending').on('value', snap => {
+    const div = document.getElementById('adminOrders');
+    if (!snap.exists()) { div.innerHTML = 'কোনো পেন্ডিং অর্ডার নেই'; return; }
+    let html = '';
+    snap.forEach(child => {
+      const o = child.val();
+      html += `<div style="padding:10px; background:#0f172a; border-radius:10px; margin-bottom:8px; font-size:13px;">
+        ${o.type} • ${o.amount} টাকা<br>
+        <button class="btn" style="width:auto; padding:6px 12px; margin-top:6px; background:var(--success);" onclick="updateStatus('${child.key}', 'approved')">Approve</button>
+        <button class="btn" style="width:auto; padding:6px 12px; margin-top:6px; background:var(--danger);" onclick="updateStatus('${child.key}', 'rejected')">Reject</button>
+      </div>`;
+    });
+    div.innerHTML = html;
+  });
+}
+
+function updateStatus(id, status) {
+  db.ref('orders/' + id).update({ status });
+  toast('স্ট্যাটাস আপডেট হয়েছে');
+}
+
+function updateRate() {
+  const rate = document.getElementById('sodaRate').value;
+  db.ref('settings/sodaRate').set(rate);
+  toast('রেট আপডেট হয়েছে');
+}
+function updateAccounts() {
+  db.ref('settings/accounts').set({
+    bkash: document.getElementById('bkashNum').value,
+    rocket: document.getElementById('rocketNum').value,
+    islami: document.getElementById('islamiNum').value
+  });
+  toast('অ্যাকাউন্ট নম্বর সেভ হয়েছে');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+</script>
+</body>
+</html>
